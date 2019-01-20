@@ -10,10 +10,8 @@ int main()
 
     std::vector<const char *> wolfAnimations; wolfAnimations.push_back("Howl");
     std::vector<int> wolfStarts; wolfStarts.push_back(0);
-    AnimationBundle* wolfBundle = createAnimationBundle("./res/wolf/tile", 20, wolfAnimations, wolfStarts);
+    AnimationBundle* wolfBundle = createAnimationBundle("./res/wolf/tile", 20, 500, wolfAnimations, wolfStarts);
 
-    int currentAnimationIndex = 0;
-    std::string currentAnimation = "Howl";
     while (window.isOpen())
     {
         sf::Event event;
@@ -25,16 +23,14 @@ int main()
             }
         }
 
-        if (currentAnimationIndex == wolfBundle->boundMap.at(currentAnimation).right + 1)
-        {
-            currentAnimationIndex = wolfBundle->boundMap.at(currentAnimation).left;
-        }
-        sf::Texture wolfTexture = wolfBundle->textures.at(currentAnimationIndex);
+        setNext(wolfBundle);
+        sf::Texture wolfTexture = getCurrentTexture(wolfBundle);
         sf::Sprite sprite(wolfTexture);
 
         window.clear();
         window.draw(sprite);
         window.display();
+
     }
 
     return 0;

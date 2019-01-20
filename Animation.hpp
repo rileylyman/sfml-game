@@ -2,7 +2,6 @@
 #include <map>
 #include <string>
 #include <SFML/Graphics.hpp>
-#include "sys/dir.h"
 
 struct Bound
 {
@@ -11,12 +10,52 @@ struct Bound
 
 struct AnimationBundle
 {
+    unsigned int currentAnimationIndex;
+    unsigned int waitFrames;
+    unsigned int currentFramesWaited;
+    std::string currentAnimation;
+
     std::map<std::string, Bound> boundMap;
     std::vector<sf::Texture> textures;
 };
 
+AnimationBundle* initAnimationBundle(std::map<std::string, Bound>* bMap, std::vector<sf::Texture>* texs, unsigned int waitFrames)
+{
+    auto ab = (AnimationBundle *) calloc(sizeof(AnimationBundle), 1);
+    ab->boundMap = *bMap;
+    ab->textures = *texs;
+    ab->waitFrames = waitFrames;
 
-std::vector<sf::Texture>* retrieveTextures(const char* filePath, int count)
+    //TODO: bound check here
+    ab->currentAnimation = bMap->begin()->first;
+    ab->currentAnimationIndex = bMap->at(ab->currentAnimation).left;
+
+    return ab;
+}
+
+inline sf::Texture getCurrentTexture(AnimationBundle* anim)
+{
+    return anim->textures.at(anim->currentAnimationIndex);
+}
+
+void setNext(AnimationBundle* anim)
+{
+    if (anim->currentFramesWaited < anim->waitFrames)
+    {
+        anim->currentFramesWaited++;
+    }
+    else
+    {
+        anim->currentFramesWaited = 0;
+        if (anim->currentAnimationIndex == anim->boundMap.at(anim->currentAnimation).right + 1)
+        {
+            anim->currentAnimationIndex = anim->boundMap.at(anim->currentAnimation).left;
+        }
+        else { anim->currentAnimationIndex++; }
+    }
+}
+
+std::vector<sf::Texture>* retrieveTextures(const char* filePath, int count) throw()
 {
     //
     // If filePath = "./res/sprites/somesprite", and count = 3, then
@@ -26,22 +65,21 @@ std::vector<sf::Texture>* retrieveTextures(const char* filePath, int count)
 
     std::vector<sf::Texture>* textures = new std::vector<sf::Texture >(count);
 
-    sf::Texture* tex;
     for (int n = 0; n < count; n++) 
     {
-        if (!tex->loadFromFile(filePath + std::to_string(n) + ".png"))
+        textures->emplace_back();
+
+        if (!textures->at(n).loadFromFile(filePath + std::to_string(n) + ".png"))
         {
             throw "Failed to create texture from file";
         }
-        textures->push_back(*tex);
     }
-    tex= NULL;
 
     return textures;
 }
 
-AnimationBundle* createAnimationBundle(const char* filePath, int animationCount, std::vector<const char*>& animationNames,
-    std::vector<int>& animationStarts)
+AnimationBundle* createAnimationBundle(const char* filePath, int animationCount, unsigned int waitFrames, 
+    std::vector<const char*>& animationNames, std::vector<int>& animationStarts)
 {
     std::vector<sf::Texture>* textures = retrieveTextures(filePath, animationCount);
     std::map<std::string, Bound>* animationMap = new std::map<std::string, Bound>();
@@ -60,9 +98,5 @@ AnimationBundle* createAnimationBundle(const char* filePath, int animationCount,
         animationMap->insert(std::pair<std::string, Bound>(name, *bound));
     }
 
-    AnimationBundle* ab = (AnimationBundle *) malloc(sizeof(AnimationBundle));
-    ab->textures = *textures;
-    ab->boundMap = *animationMap;
-
-    return ab;
+    return initAnimationBundle(animationMap, textures, waitFrames);
 }
